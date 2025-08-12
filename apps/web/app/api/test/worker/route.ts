@@ -5,10 +5,6 @@ export async function GET(req: NextRequest) {
   try {
     console.log("🧪 Testing worker configuration...");
     
-    // Check Redis connection
-    const redisStatus = videoProcessingQueue.client.status;
-    console.log("🔌 Redis status:", redisStatus);
-    
     // Check queue info
     const waitingJobs = await videoProcessingQueue.getWaiting(0, 0);
     const activeJobs = await videoProcessingQueue.getActive(0, 0);
@@ -21,7 +17,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Worker configuration is working",
-      redis: redisStatus,
       queue: {
         waiting: waitingJobs.length,
         active: activeJobs.length
