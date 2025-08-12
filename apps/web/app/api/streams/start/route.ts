@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
           streamId: stream.id,
           jobId: `job_${stream.id}_${Date.now()}`,
           s3Url: s3Url,
+          s3Key: video.s3Key,  // Add S3 key for fallback access
           ingest: account.ingestServer,
           streamKey: streamKey,
           fps: stream.fps,

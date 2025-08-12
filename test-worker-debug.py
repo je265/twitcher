@@ -127,6 +127,49 @@ def test_ffmpeg_stream():
         except:
             pass
 
+def test_s3_access():
+    """Test S3 access and permissions"""
+    print("🔍 Testing S3 access...")
+    try:
+        import boto3
+        from botocore.exceptions import ClientError, NoCredentialsError
+        
+        s3_endpoint = os.environ.get("S3_ENDPOINT")
+        s3_access_key = os.environ.get("S3_ACCESS_KEY")
+        s3_secret_key = os.environ.get("S3_SECRET_KEY")
+        s3_bucket = os.environ.get("S3_BUCKET_NAME", "twitcher-videos")
+        
+        if not all([s3_endpoint, s3_access_key, s3_secret_key]):
+            print("❌ Missing S3 environment variables")
+            return False
+        
+        # Create S3 client
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=s3_endpoint,
+            aws_access_key_id=s3_access_key,
+            aws_secret_access_key=s3_secret_key,
+            region_name='us-east-1'
+        )
+        
+        # Test bucket access
+        response = s3_client.head_bucket(Bucket=s3_bucket)
+        print(f"✅ S3 bucket access successful: {s3_bucket}")
+        
+        # Test object listing
+        response = s3_client.list_objects_v2(Bucket=s3_bucket, MaxKeys=3)
+        object_count = len(response.get('Contents', []))
+        print(f"✅ S3 object listing successful: {object_count} objects found")
+        
+        return True
+        
+    except ImportError:
+        print("❌ boto3 not installed")
+        return False
+    except Exception as e:
+        print(f"❌ S3 test failed: {e}")
+        return False
+
 def main():
     print("🚀 Twitcher Worker Debug Script")
     print("=" * 50)
@@ -134,6 +177,7 @@ def main():
     tests = [
         ("Environment Variables", test_environment),
         ("FFmpeg Availability", test_ffmpeg),
+        ("S3 Access", test_s3_access),
         ("API Connection", test_api_connection),
         ("FFmpeg Streaming", test_ffmpeg_stream),
     ]

@@ -13,7 +13,7 @@ WORKER_ID = os.environ.get("WORKER_ID", "py-1")
 S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://localhost:9000")
 S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY")
 S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY")
-S3_BUCKET = os.environ.get("S3_BUCKET", "twitcher")
+S3_BUCKET = os.environ.get("S3_BUCKET_NAME", "twitcher-videos")  # Fixed: use S3_BUCKET_NAME to match web app
 
 POLL_INTERVAL = 3
 
@@ -273,6 +273,10 @@ def main():
                 import urllib.request
                 test_req = urllib.request.Request(job['s3Url'])
                 test_req.get_method = lambda: 'HEAD'
+                
+                # Add User-Agent to avoid some S3 restrictions
+                test_req.add_header('User-Agent', 'Twitcher-Worker/1.0')
+                
                 with urllib.request.urlopen(test_req, timeout=10) as response:
                     if response.status != 200:
                         raise Exception(f"S3 URL returned status {response.status}")
@@ -280,12 +284,65 @@ def main():
             except Exception as e:
                 error_msg = f"S3 URL not accessible: {e}"
                 print(f"❌ {error_msg}")
+                
+                # Try to provide more helpful error information
+                if "403" in str(e):
+                    print("🔍 403 Forbidden suggests permission issues:")
+                    print("   - Check if S3 bucket policy allows worker access")
+                    print("   - Verify S3 credentials are correct")
+                    print("   - Ensure bucket name matches: " + S3_BUCKET)
+                    print("   - Check if S3 endpoint is accessible from worker")
+                
+                # Try alternative approach - use S3 client if available
+                if s3_client and "s3Key" in job:
+                    try:
+                        print("🔄 Attempting to access via S3 client...")
+                        # Extract S3 key from the URL path
+                        s3_key = job.get("s3Key", "")
+                        if not s3_key:
+                            # Try to extract from URL path
+                            url_parts = job['s3Url'].split('/')
+                            if 'videos' in url_parts:
+                                video_index = url_parts.index('videos')
+                                s3_key = '/'.join(url_parts[video_index:])
+                                if '?' in s3_key:
+                                    s3_key = s3_key.split('?')[0]
+                        
+                        if s3_key:
+                            print(f"🔑 Attempting to access S3 key: {s3_key}")
+                            # Test S3 client access
+                            s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
+                            print("✅ S3 client access successful")
+                            # Update job to use S3 client instead of presigned URL
+                            job['useS3Client'] = True
+                            job['s3Key'] = s3_key
+                        else:
+                            raise Exception("Could not extract S3 key from URL")
+                    except Exception as s3_error:
+                        print(f"❌ S3 client access also failed: {s3_error}")
+                        print(f"🔧 S3 Client Config: endpoint={S3_ENDPOINT}, bucket={S3_BUCKET}, has_creds={bool(S3_ACCESS_KEY and S3_SECRET_KEY)}")
+                
                 callback({"streamId": stream_id, "jobId": job_id, "status": "FAILED", "endedAt": datetime.now(timezone.utc).isoformat(), "worker": WORKER_ID, "error": error_msg})
                 continue
             
             # Assume `job["s3Url"]` is a presigned GET to the MP4
+            # If S3 client access worked, use that instead of presigned URL
+            input_source = job["s3Url"]
+            if job.get("useS3Client") and s3_client:
+                print("🔄 Using S3 client for video access instead of presigned URL")
+                # Create a local temporary file and download from S3
+                with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video:
+                    temp_video_path = temp_video.name
+                
+                print(f"📥 Downloading video from S3 to temp file: {temp_video_path}")
+                if download_from_s3(job["s3Key"], temp_video_path):
+                    input_source = temp_video_path
+                    print("✅ Video downloaded successfully, using local file")
+                else:
+                    print("❌ Failed to download video from S3, falling back to presigned URL")
+            
             proc = run_ffmpeg(
-                input_url=job["s3Url"],
+                input_url=input_source,
                 ingest=job["ingest"],
                 stream_key=job["streamKey"],
                 fps=fps, vb_k=vb, ab_k=ab, loop=loop
@@ -419,6 +476,14 @@ def main():
                 if log_lines:
                     for line in log_lines[-10:]:  # Show last 10 lines
                         print(f"   {line}")
+            
+            # Clean up temporary video file if we created one
+            if job.get("useS3Client") and "temp_video_path" in locals():
+                try:
+                    os.unlink(temp_video_path)
+                    print(f"🧹 Cleaned up temporary video file: {temp_video_path}")
+                except Exception as cleanup_error:
+                    print(f"⚠️ Failed to clean up temporary file: {cleanup_error}")
             
             # Send final callback with bitrate if we have it
             callback_data = {
