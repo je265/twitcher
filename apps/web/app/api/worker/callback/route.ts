@@ -13,8 +13,44 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { streamId, jobId, status, startedAt, endedAt, worker, bitrate, timestamp } = body;
+    const { streamId, videoId, jobId, status, startedAt, endedAt, worker, bitrate, timestamp, error } = body;
 
+    // Handle video processing callbacks
+    if (videoId) {
+      console.log(`📹 Worker callback for video processing ${videoId}:`, { status, worker, error });
+      
+      if (status === "ACTIVE") {
+        await prisma.video.update({
+          where: { id: videoId },
+          data: {
+            processingStatus: "PROCESSING",
+            processingStartedAt: startedAt ? new Date(startedAt) : new Date(),
+          },
+        });
+      } else if (status === "COMPLETED") {
+        await prisma.video.update({
+          where: { id: videoId },
+          data: {
+            processingStatus: "COMPLETED",
+            processingCompletedAt: endedAt ? new Date(endedAt) : new Date(),
+            s3Key: body.outputS3Key, // Update to processed video S3 key
+          },
+        });
+      } else if (status === "FAILED") {
+        await prisma.video.update({
+          where: { id: videoId },
+          data: {
+            processingStatus: "FAILED",
+            processingCompletedAt: endedAt ? new Date(endedAt) : new Date(),
+            processingError: error || "Unknown error",
+          },
+        });
+      }
+      
+      return NextResponse.json({ success: true });
+    }
+
+    // Handle streaming callbacks (existing logic)
     console.log(`📡 Worker callback for stream ${streamId}:`, { status, worker, bitrate });
 
     // Update stream status

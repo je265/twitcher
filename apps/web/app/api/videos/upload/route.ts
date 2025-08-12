@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verify } from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { uploadVideoToS3, ensureBucketExists } from "@/lib/storage";
+import { videoProcessingQueue } from "@/lib/queue";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || "fallback-secret";
 
@@ -62,14 +63,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate unique S3 key
+    // Generate unique S3 keys
     const timestamp = Date.now();
     const sanitizedTitle = title.replace(/[^a-zA-Z0-9]/g, "_");
     const fileExtension = file.name.split(".").pop();
-    const s3Key = `videos/${user.userId}/${timestamp}_${sanitizedTitle}.${fileExtension}`;
+    const originalS3Key = `videos/${user.userId}/original/${timestamp}_${sanitizedTitle}.${fileExtension}`;
+    const processedS3Key = `videos/${user.userId}/processed/${timestamp}_${sanitizedTitle}.mp4`;
 
-    // Ensure bucket exists and upload to S3/MinIO
-    console.log(`📤 Uploading video to S3: ${s3Key}`);
+    // Ensure bucket exists and upload original file to S3
+    console.log(`📤 Uploading original video to S3: ${originalS3Key}`);
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
@@ -77,25 +79,26 @@ export async function POST(req: NextRequest) {
       // Ensure bucket exists before uploading
       await ensureBucketExists();
       
-      // Upload the file
-      await uploadVideoToS3(s3Key, buffer, file.type);
-      console.log(`✅ Successfully uploaded ${buffer.length} bytes to ${s3Key}`);
+      // Upload the original file
+      await uploadVideoToS3(originalS3Key, buffer, file.type);
+      console.log(`✅ Successfully uploaded ${buffer.length} bytes to ${originalS3Key}`);
     } catch (uploadError) {
-      console.error("❌ Failed to upload video to S3:", uploadError);
+      console.error("❌ Failed to upload original video to S3:", uploadError);
       return NextResponse.json(
         { success: false, message: "Failed to upload video file" },
         { status: 500 }
       );
     }
 
-    // Store video metadata in database
+    // Store video metadata in database with PENDING status
     const video = await prisma.video.create({
       data: {
         uploaderId: user.userId,
         title,
         description,
-        s3Key,
-        // We'd normally get these from video analysis
+        s3Key: originalS3Key, // Store original S3 key initially
+        processingStatus: "PENDING",
+        // We'll get these from video analysis after processing
         durationSec: null,
         width: null,
         height: null,
@@ -104,9 +107,27 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Queue video processing job
+    const jobId = `video-${video.id}-${timestamp}`;
+    await videoProcessingQueue.add(
+      "process-video",
+      {
+        jobId,
+        videoId: video.id,
+        inputS3Key: originalS3Key,
+        outputS3Key: processedS3Key,
+      },
+      {
+        removeOnComplete: true,
+        removeOnFail: true,
+      }
+    );
+
+    console.log(`🔄 Queued video processing job: ${jobId}`);
+
     return NextResponse.json({
       success: true,
-      message: "Video uploaded successfully",
+      message: "Video uploaded and queued for processing",
       video: {
         id: video.id,
         title: video.title,
@@ -114,6 +135,7 @@ export async function POST(req: NextRequest) {
         s3Key: video.s3Key,
         fileSize: buffer.length,
         contentType: file.type,
+        processingStatus: "PENDING",
         createdAt: video.createdAt,
       },
     });

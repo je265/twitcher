@@ -15,3 +15,4 @@ echo WORKER_ID=%WORKER_ID%
 echo Starting Python worker...
 cd apps\python-worker
 python worker.py
+

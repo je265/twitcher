@@ -73,6 +73,10 @@ model Video {
   height       Int?
   codecVideo   String?  // e.g. h264
   codecAudio   String?  // e.g. aac
+  processingStatus ProcessingStatus @default(PENDING)
+  processingStartedAt DateTime?
+  processingCompletedAt DateTime?
+  processingError String?
   createdAt    DateTime @default(now())
 
   uploader User @relation("UploaderVideos", fields: [uploaderId], references: [id])
@@ -135,6 +139,13 @@ enum JobStatus {
   COMPLETED
   FAILED
   CANCELED
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 model StreamMetrics {

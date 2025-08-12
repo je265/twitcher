@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { streamQueue } from "@/lib/queue";
+import { streamQueue, videoProcessingQueue } from "@/lib/queue";
 
 function auth(req: NextRequest) {
   return req.headers.get("authorization") === `Bearer ${process.env.WORKER_TOKEN}`;
@@ -11,16 +11,31 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Get next job from queue
-    const job = await streamQueue.getNextJob("stream-worker");
+    // First check for video processing jobs (higher priority)
+    let job = await videoProcessingQueue.getNextJob("video-worker");
+    
+    if (job) {
+      // Return video processing job data
+      return NextResponse.json({
+        type: "video_process",
+        jobId: job.data.jobId,
+        videoId: job.data.videoId,
+        inputS3Key: job.data.inputS3Key,
+        outputS3Key: job.data.outputS3Key,
+      });
+    }
+    
+    // If no video processing jobs, check for streaming jobs
+    job = await streamQueue.getNextJob("stream-worker");
     
     if (!job) {
       // No jobs available
       return new NextResponse(null, { status: 204 });
     }
 
-    // Return job data for worker
+    // Return streaming job data
     return NextResponse.json({
+      type: "stream",
       streamId: job.data.streamId,
       jobId: job.data.jobId,
       s3Url: job.data.s3Url,
