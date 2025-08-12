@@ -139,31 +139,67 @@ export default function OverviewTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gray-800 p-6 rounded-lg border-l-4 border-purple-500">
-          <h3 className="text-lg font-medium text-white mb-2">Total Streams</h3>
-          <p className="text-3xl font-bold text-purple-400">{stats.totalStreams}</p>
-          <p className="text-sm text-gray-400 mt-1">All time</p>
+        <div className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:bg-white/[0.05] transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+               style={{
+                 background: `linear-gradient(135deg, transparent 40%, rgba(168, 85, 247, 0.05) 100%)`
+               }} />
+          
+          <div className="relative">
+            <h3 className="text-lg font-medium text-white mb-2">Total Streams</h3>
+            <p className="text-3xl font-bold text-purple-400">{stats.totalStreams}</p>
+            <p className="text-sm text-gray-400 mt-1">All time</p>
+          </div>
+          
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-50 transition-opacity" />
         </div>
         
-        <div className="bg-gray-800 p-6 rounded-lg border-l-4 border-green-500">
-          <h3 className="text-lg font-medium text-white mb-2">Active Streams</h3>
-          <p className="text-3xl font-bold text-green-400">{stats.activeStreams}</p>
-          <p className="text-sm text-gray-400 mt-1">Currently running</p>
+        <div className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:bg-white/[0.05] transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+               style={{
+                 background: `linear-gradient(135deg, transparent 40%, rgba(34, 197, 94, 0.05) 100%)`
+               }} />
+          
+          <div className="relative">
+            <h3 className="text-lg font-medium text-white mb-2">Active Streams</h3>
+            <p className="text-3xl font-bold text-green-400">{stats.activeStreams}</p>
+            <p className="text-sm text-gray-400 mt-1">Currently running</p>
+          </div>
+          
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-green-500 to-emerald-500 opacity-0 group-hover:opacity-50 transition-opacity" />
         </div>
         
-        <div className="bg-gray-800 p-6 rounded-lg border-l-4 border-blue-500">
-          <h3 className="text-lg font-medium text-white mb-2">Videos</h3>
-          <p className="text-3xl font-bold text-blue-400">{stats.totalVideos}</p>
-          <p className="text-sm text-gray-400 mt-1">Ready to stream</p>
+        <div className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:bg-white/[0.05] transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+               style={{
+                 background: `linear-gradient(135deg, transparent 40%, rgba(59, 130, 246, 0.05) 100%)`
+               }} />
+          
+          <div className="relative">
+            <h3 className="text-lg font-medium text-white mb-2">Videos</h3>
+            <p className="text-3xl font-bold text-blue-400">{stats.totalVideos}</p>
+            <p className="text-sm text-gray-400 mt-1">Ready to stream</p>
+          </div>
+          
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-50 transition-opacity" />
         </div>
         
-        <div className="bg-gray-800 p-6 rounded-lg border-l-4 border-yellow-500">
-          <h3 className="text-lg font-medium text-white mb-2">Connected Accounts</h3>
-          <p className="text-3xl font-bold text-yellow-400">{stats.connectedAccounts}</p>
-          <p className="text-sm text-gray-400 mt-1">Twitch channels</p>
+        <div className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:bg-white/[0.05] transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+               style={{
+                 background: `linear-gradient(135deg, transparent 40%, rgba(234, 179, 8, 0.05) 100%)`
+               }} />
+          
+          <div className="relative">
+            <h3 className="text-lg font-medium text-white mb-2">Connected Accounts</h3>
+            <p className="text-3xl font-bold text-yellow-400">{stats.connectedAccounts}</p>
+            <p className="text-sm text-gray-400 mt-1">Twitch channels</p>
+          </div>
+          
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-yellow-500 to-orange-500 opacity-0 group-hover:opacity-50 transition-opacity" />
         </div>
       </div>
 
@@ -171,63 +207,100 @@ export default function OverviewTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <button
           onClick={() => window.location.href = '/dashboard/streaming'}
-          className="bg-red-600 hover:bg-red-700 p-6 rounded-lg text-center transition-colors"
+          className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-6 text-center hover:bg-white/[0.05] transition-all duration-300"
         >
-          <div className="text-2xl mb-2">🔴</div>
-          <div className="text-lg font-medium text-white">Start Streaming</div>
-          <div className="text-sm text-red-200">Begin multi-account broadcast</div>
+          <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+               style={{
+                 background: `linear-gradient(135deg, transparent 40%, rgba(239, 68, 68, 0.05) 100%)`
+               }} />
+          
+          <div className="relative">
+            <div className="text-3xl mb-3">🔴</div>
+            <div className="text-lg font-medium text-white mb-2">Start Streaming</div>
+            <div className="text-sm text-gray-400">Begin multi-account broadcast</div>
+          </div>
+          
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-red-500 to-pink-500 opacity-0 group-hover:opacity-50 transition-opacity" />
         </button>
         
         <button
           onClick={() => window.location.href = '/dashboard/videos'}
-          className="bg-blue-600 hover:bg-blue-700 p-6 rounded-lg text-center transition-colors"
+          className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-6 text-center hover:bg-white/[0.05] transition-all duration-300"
         >
-          <div className="text-2xl mb-2">📹</div>
-          <div className="text-lg font-medium text-white">Upload Video</div>
-          <div className="text-sm text-blue-200">Add content to stream</div>
+          <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+               style={{
+                 background: `linear-gradient(135deg, transparent 40%, rgba(59, 130, 246, 0.05) 100%)`
+               }} />
+          
+          <div className="relative">
+            <div className="text-3xl mb-3">📹</div>
+            <div className="text-lg font-medium text-white mb-2">Upload Video</div>
+            <div className="text-sm text-gray-400">Add content to stream</div>
+          </div>
+          
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-50 transition-opacity" />
         </button>
         
         <button
           onClick={() => window.location.href = '/dashboard/accounts'}
-          className="bg-purple-600 hover:bg-purple-700 p-6 rounded-lg text-center transition-colors"
+          className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-6 text-center hover:bg-white/[0.05] transition-all duration-300"
         >
-          <div className="text-2xl mb-2">👥</div>
-          <div className="text-lg font-medium text-white">Connect Account</div>
-          <div className="text-sm text-purple-200">Add Twitch channels</div>
+          <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+               style={{
+                 background: `linear-gradient(135deg, transparent 40%, rgba(168, 85, 247, 0.05) 100%)`
+               }} />
+          
+          <div className="relative">
+            <div className="text-3xl mb-3">👥</div>
+            <div className="text-lg font-medium text-white mb-2">Connect Account</div>
+            <div className="text-sm text-gray-400">Add Twitch channels</div>
+          </div>
+          
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-50 transition-opacity" />
         </button>
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-gray-800 p-6 rounded-lg">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-white">Recent Activity</h3>
-          <button
-            onClick={fetchOverviewData}
-            className="text-sm text-purple-400 hover:text-purple-300"
-          >
-            🔄 Refresh
-          </button>
+      <div className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-6 hover:bg-white/[0.05] transition-all duration-300">
+        <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+             style={{
+               background: `linear-gradient(135deg, transparent 40%, rgba(168, 85, 247, 0.05) 100%)`
+             }} />
+        
+        <div className="relative">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-medium text-white">Recent Activity</h3>
+            <button
+              onClick={fetchOverviewData}
+              className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-2"
+            >
+              <span>🔄</span>
+              Refresh
+            </button>
+          </div>
+          
+          {recentActivity.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-5xl mb-4">🚀</div>
+              <p className="text-gray-400 mb-2 text-lg">No recent activity</p>
+              <p className="text-sm text-gray-500">Start by uploading a video or connecting a Twitch account</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-start gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/[0.05] transition-all">
+                  <span className="text-xl">{getActivityIcon(activity.type)}</span>
+                  <div className="flex-1">
+                    <p className="text-white text-sm">{activity.message}</p>
+                    <p className="text-gray-400 text-xs mt-1">{formatTimestamp(activity.timestamp)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         
-        {recentActivity.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-4xl mb-2">🚀</div>
-            <p className="text-gray-400 mb-2">No recent activity</p>
-            <p className="text-sm text-gray-500">Start by uploading a video or connecting a Twitch account</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-start gap-3 p-3 bg-gray-700 rounded-lg">
-                <span className="text-lg">{getActivityIcon(activity.type)}</span>
-                <div className="flex-1">
-                  <p className="text-white text-sm">{activity.message}</p>
-                  <p className="text-gray-400 text-xs mt-1">{formatTimestamp(activity.timestamp)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-50 transition-opacity" />
       </div>
     </div>
   );

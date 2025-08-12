@@ -70,8 +70,8 @@ export default function BitrateGraph({
     const graphWidth = width - 2 * padding;
     const graphHeight = height - 2 * padding;
 
-    // Clear canvas
-    ctx.fillStyle = '#1f2937'; // gray-800
+    // Clear canvas with glass-morphism background
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
     ctx.fillRect(0, 0, width, height);
 
     // Find min/max for scaling
@@ -81,7 +81,7 @@ export default function BitrateGraph({
     const range = maxBitrate - minBitrate;
 
     // Draw grid lines
-    ctx.strokeStyle = '#374151'; // gray-700
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
     ctx.lineWidth = 1;
     
     // Horizontal grid lines (bitrate levels)
@@ -94,7 +94,7 @@ export default function BitrateGraph({
       
       // Bitrate labels
       const bitrate = maxBitrate - (i / 5) * range;
-      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.fillStyle = 'rgba(156, 163, 175, 0.8)'; // gray-400 with opacity
       ctx.font = '12px sans-serif';
       ctx.textAlign = 'right';
       ctx.fillText(`${Math.round(bitrate)}k`, padding - 5, y + 4);
@@ -160,7 +160,7 @@ export default function BitrateGraph({
     }
 
     // Draw time labels
-    ctx.fillStyle = '#9ca3af';
+    ctx.fillStyle = 'rgba(156, 163, 175, 0.8)';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'center';
     
@@ -193,7 +193,7 @@ export default function BitrateGraph({
 
   if (loading) {
     return (
-      <div className="bg-gray-800 p-4 rounded-lg">
+      <div className="bg-white/[0.02] border border-white/5 p-6 rounded-xl">
         <div className="flex items-center justify-center h-48">
           <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -202,13 +202,13 @@ export default function BitrateGraph({
   }
 
   return (
-    <div className="bg-gray-800 p-4 rounded-lg">
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="text-white font-medium">Bitrate Performance</h4>
+    <div className="bg-white/[0.02] border border-white/5 p-6 rounded-xl">
+      <div className="flex items-center justify-between mb-6">
+        <h4 className="text-white font-medium text-lg">Bitrate Performance</h4>
         <div className="flex items-center gap-4">
           {stats && (
-            <div className="flex gap-4 text-sm">
-              <span className={`${getHealthColor()}`}>
+            <div className="flex gap-6 text-sm">
+              <span className={`${getHealthColor()} font-medium`}>
                 Avg: {stats.average.toFixed(1)}k
               </span>
               <span className="text-gray-400">
@@ -225,9 +225,9 @@ export default function BitrateGraph({
       {metrics.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-gray-400">
           <div className="text-center">
-            <div className="text-2xl mb-2">📊</div>
-            <p>No bitrate data yet</p>
-            <p className="text-sm">Data will appear once streaming starts</p>
+            <div className="text-3xl mb-3">📊</div>
+            <p className="text-lg mb-2">No bitrate data yet</p>
+            <p className="text-sm text-gray-500">Data will appear once streaming starts</p>
           </div>
         </div>
       ) : (
@@ -236,11 +236,11 @@ export default function BitrateGraph({
             ref={canvasRef}
             width={600}
             height={200}
-            className="w-full h-48 rounded"
+            className="w-full h-48 rounded-lg"
             style={{ maxWidth: '100%', height: '200px' }}
           />
           
-          <div className="mt-3 flex justify-between text-xs text-gray-500">
+          <div className="mt-4 flex justify-between text-xs text-gray-500">
             <span>Last {stats?.timeRange || 30} minutes</span>
             <span>{stats?.dataPoints || 0} data points</span>
           </div>

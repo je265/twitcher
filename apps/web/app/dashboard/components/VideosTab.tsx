@@ -139,150 +139,198 @@ export default function VideosTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Upload Section */}
-      <div className="bg-gray-800 p-6 rounded-lg">
-        <h3 className="text-lg font-medium text-white mb-4">Upload New Video</h3>
-        <p className="text-gray-400 mb-4">
-          Upload MP4, MOV, AVI, or other video files to stream to your Twitch accounts.
-        </p>
+      <div className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-8 hover:bg-white/[0.05] transition-all duration-300">
+        <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+             style={{
+               background: `linear-gradient(135deg, transparent 40%, rgba(59, 130, 246, 0.05) 100%)`
+             }} />
         
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <label className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium cursor-pointer flex items-center gap-2">
-              {uploading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  📹 Choose Video File
-                </>
-              )}
-              <input
-                type="file"
-                accept="video/*"
-                onChange={handleFileUpload}
-                disabled={uploading}
-                className="hidden"
-              />
-            </label>
-            
-            {uploading && (
-              <div className="flex-1">
-                <div className="bg-gray-700 rounded-full h-2">
-                  <div 
-                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  ></div>
-                </div>
-                <p className="text-sm text-gray-400 mt-1">{uploadProgress}% uploaded</p>
-              </div>
-            )}
-          </div>
+        <div className="relative">
+          <h3 className="text-xl font-medium text-white mb-4">Upload New Video</h3>
+          <p className="text-gray-400 mb-6">
+            Upload MP4, MOV, AVI, or other video files to stream to your Twitch accounts.
+          </p>
           
-          <div className="text-sm text-gray-500">
-            <p>• Maximum file size: 500MB</p>
-            <p>• Supported formats: MP4, MOV, AVI, MKV, and more</p>
-            <p>• Videos will be processed and optimized for streaming</p>
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <label className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-600 disabled:to-gray-600 text-white px-8 py-3 rounded-xl font-medium cursor-pointer flex items-center gap-2 transition-all duration-200 hover:shadow-lg disabled:shadow-none">
+                {uploading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    📹 Choose Video File
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+              
+              {uploading && (
+                <div className="flex-1">
+                  <div className="bg-white/10 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-2">{uploadProgress}% uploaded</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="text-sm text-gray-500 space-y-1">
+              <p>• Maximum file size: 500MB</p>
+              <p>• Supported formats: MP4, MOV, AVI, MKV, and more</p>
+              <p>• Videos will be processed and optimized for streaming</p>
+            </div>
           </div>
         </div>
+        
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-50 transition-opacity" />
       </div>
 
       {/* Videos List */}
-      <div className="bg-gray-800 p-6 rounded-lg">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-medium text-white">Your Videos ({videos.length})</h3>
-          <button
-            onClick={fetchVideos}
-            className="text-sm text-blue-400 hover:text-blue-300"
-          >
-            🔄 Refresh
-          </button>
-        </div>
+      <div className="group relative bg-white/[0.02] border border-white/5 rounded-2xl p-8 hover:bg-white/[0.05] transition-all duration-300">
+        <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+             style={{
+               background: `linear-gradient(135deg, transparent 40%, rgba(168, 85, 247, 0.05) 100%)`
+             }} />
+        
+        <div className="relative">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-medium text-white">Your Videos ({videos.length})</h3>
+            <button
+              onClick={fetchVideos}
+              className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-2"
+            >
+              <span>🔄</span>
+              Refresh
+            </button>
+          </div>
 
-        {videos.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">📹</div>
-            <h4 className="text-xl font-medium text-white mb-2">No videos yet</h4>
-            <p className="text-gray-400 mb-4">Upload your first video to start streaming to multiple Twitch accounts.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {videos.map((video) => (
-              <div key={video.id} className="bg-gray-700 rounded-lg overflow-hidden">
-                {/* Video thumbnail placeholder */}
-                <div className="h-40 bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <div className="text-4xl mb-2">🎬</div>
-                    <div className="text-sm">
-                      {video.width && video.height && `${video.width}×${video.height}`}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="p-4">
-                  <h4 className="font-medium text-white mb-2 truncate" title={video.title}>
-                    {video.title}
-                  </h4>
+          {videos.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-6xl mb-6">📹</div>
+              <h4 className="text-2xl font-medium text-white mb-3">No videos yet</h4>
+              <p className="text-gray-400 mb-6">Upload your first video to start streaming to multiple Twitch accounts.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {videos.map((video) => (
+                <div key={video.id} className="group/video relative bg-white/[0.02] border border-white/5 rounded-xl overflow-hidden hover:bg-white/[0.05] transition-all duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover/video:opacity-100 transition-opacity"
+                       style={{
+                         background: `linear-gradient(135deg, transparent 40%, rgba(59, 130, 246, 0.05) 100%)`
+                       }} />
                   
-                  <p className="text-sm text-gray-400 mb-3 line-clamp-2" title={video.description}>
-                    {video.description}
-                  </p>
-                  
-                  <div className="space-y-1 text-xs text-gray-500">
-                    <div className="flex justify-between">
-                      <span>Duration:</span>
-                      <span>{formatDuration(video.durationSec)}</span>
-                    </div>
-                    
-                    {video.codecVideo && (
-                      <div className="flex justify-between">
-                        <span>Codec:</span>
-                        <span>{video.codecVideo.toUpperCase()}</span>
+                  {/* Video thumbnail placeholder */}
+                  <div className="relative h-40 bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+                    <div className="text-center text-white">
+                      <div className="text-4xl mb-2">🎬</div>
+                      <div className="text-sm">
+                        {video.width && video.height && `${video.width}×${video.height}`}
                       </div>
-                    )}
-                    
-                    <div className="flex justify-between">
-                      <span>Uploaded:</span>
-                      <span>{formatDate(video.createdAt)}</span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span>Used in streams:</span>
-                      <span>{video._count.streams}</span>
                     </div>
                   </div>
                   
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={() => window.location.href = '/dashboard/streaming'}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm"
-                    >
-                      🔴 Stream This
-                    </button>
+                  <div className="relative p-6">
+                    <h4 className="font-medium text-white mb-3 truncate" title={video.title}>
+                      {video.title}
+                    </h4>
                     
-                    <button className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded text-sm">
-                      ⋯
-                    </button>
+                    <p className="text-sm text-gray-400 mb-4 line-clamp-2" title={video.description}>
+                      {video.description}
+                    </p>
+                    
+                    <div className="space-y-2 text-xs text-gray-500 mb-6">
+                      <div className="flex justify-between">
+                        <span>Duration:</span>
+                        <span>{formatDuration(video.durationSec)}</span>
+                      </div>
+                      
+                      {video.codecVideo && (
+                        <div className="flex justify-between">
+                          <span>Codec:</span>
+                          <span>{video.codecVideo.toUpperCase()}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between">
+                        <span>Uploaded:</span>
+                        <span>{formatDate(video.createdAt)}</span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span>Used in streams:</span>
+                        <span>{video._count.streams}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => window.location.href = '/dashboard/streaming'}
+                        className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-lg"
+                      >
+                        🔴 Stream This
+                      </button>
+                      
+                      <button className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200">
+                        ⋯
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-50 transition-opacity" />
       </div>
 
       {/* Storage Info */}
-      <div className="bg-blue-900/20 border border-blue-800 p-4 rounded-lg">
-        <h4 className="text-blue-400 font-medium mb-2">💡 Storage & Processing</h4>
-        <ul className="text-sm text-blue-300 space-y-1">
-          <li>• Videos are stored securely in S3-compatible storage</li>
-          <li>• Processing happens automatically after upload</li>
-          <li>• All formats are optimized for streaming performance</li>
-          <li>• Videos can be streamed to multiple accounts simultaneously</li>
-        </ul>
+      <div className="group relative bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6 hover:bg-blue-500/15 transition-all duration-300">
+        <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl"
+             style={{
+               background: `linear-gradient(135deg, transparent 40%, rgba(59, 130, 246, 0.05) 100%)`
+             }} />
+        
+        <div className="relative">
+          <h4 className="text-blue-400 font-medium mb-4 flex items-center gap-2">
+            <span className="text-lg">💡</span>
+            Storage & Processing
+          </h4>
+          <ul className="text-sm text-blue-300 space-y-2">
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400">•</span>
+              <div>Videos are stored securely in S3-compatible storage</div>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400">•</span>
+              <div>Processing happens automatically after upload</div>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400">•</span>
+              <div>All formats are optimized for streaming performance</div>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400">•</span>
+              <div>Videos can be streamed to multiple accounts simultaneously</div>
+            </li>
+          </ul>
+        </div>
+        
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-50 transition-opacity" />
       </div>
     </div>
   );
