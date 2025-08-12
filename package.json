@@ -11,7 +11,9 @@
     "db:push": "pnpm -F @repo/prisma db push",
     "db:migrate": "pnpm -F @repo/prisma migrate dev",
     "docker:up": "cd infra && docker-compose up -d",
-    "docker:down": "cd infra && docker-compose down"
+    "docker:down": "cd infra && docker-compose down",
+    "railway:build": "pnpm install && pnpm -F @apps/web build",
+    "railway:start": "pnpm -F @apps/web start"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
