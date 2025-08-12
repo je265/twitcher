@@ -1,53 +1,35 @@
-import { Queue, Job } from "bullmq";
+import { Queue } from "bullmq";
 import IORedis from "ioredis";
 
-export const connection = new IORedis(process.env.REDIS_URL!);
-
-class StreamQueue extends Queue {
-  constructor(name: string, opts: any) {
-    super(name, opts);
+// Create Redis connection with better error handling
+const createRedisConnection = () => {
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    throw new Error("REDIS_URL environment variable is required");
   }
+  
+  return new IORedis(redisUrl, {
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+    enableOfflineQueue: false,
+  });
+};
 
-  async getNextJob(workerName: string): Promise<Job | null> {
-    try {
-      // Get waiting jobs and remove the first one from the queue
-      const waitingJobs = await this.getWaiting(0, 0);
-      if (waitingJobs.length > 0) {
-        const job = waitingJobs[0];
-        // Remove the job from waiting state so it won't be picked up again
-        await job.remove();
-        return job;
-      }
-      return null;
-    } catch (error) {
-      console.error("Failed to get next job:", error);
-      return null;
-    }
-  }
-}
+export const connection = createRedisConnection();
 
-class VideoProcessingQueue extends Queue {
-  constructor(name: string, opts: any) {
-    super(name, opts);
-  }
+// Handle Redis connection events
+connection.on('error', (error) => {
+  console.error('❌ Redis connection error:', error);
+});
 
-  async getNextJob(workerName: string): Promise<Job | null> {
-    try {
-      // Get waiting jobs and remove the first one from the queue
-      const waitingJobs = await this.getWaiting(0, 0);
-      if (waitingJobs.length > 0) {
-        const job = waitingJobs[0];
-        // Remove the job from waiting state so it won't be picked up again
-        await job.remove();
-        return job;
-      }
-      return null;
-    } catch (error) {
-      console.error("Failed to get next job:", error);
-      return null;
-    }
-  }
-}
+connection.on('connect', () => {
+  console.log('✅ Redis connected successfully');
+});
 
-export const streamQueue = new StreamQueue("stream-jobs", { connection });
-export const videoProcessingQueue = new VideoProcessingQueue("video-processing-jobs", { connection });
+connection.on('ready', () => {
+  console.log('✅ Redis ready to accept commands');
+});
+
+// Use standard BullMQ Queue instances
+export const streamQueue = new Queue("stream-jobs", { connection });
+export const videoProcessingQueue = new Queue("video-processing-jobs", { connection });
