@@ -96,6 +96,7 @@ export async function GET(req: NextRequest) {
       streamId: job.data.streamId,
       jobId: job.data.jobId,
       s3Url: job.data.s3Url,
+      s3Key: job.data.s3Key,  // Add S3 key for worker fallback access
       ingest: job.data.ingest,
       streamKey: job.data.streamKey,
       fps: job.data.fps,
