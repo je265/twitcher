@@ -3,15 +3,15 @@
 ## 🔧 **Current Issue Fixed:**
 
 The build was failing because:
-- Railway was trying to deploy from `/apps/web` directory
-- But `pnpm-lock.yaml` exists in the root directory
-- The Dockerfile expected root-level access
+- Railway was trying to use Docker instead of NIXPACKS
+- Docker build context was incorrect for the monorepo structure
+- Missing files in the build context
 
 ## ✅ **Solution Applied:**
 
-1. **Updated Railway Configuration**: Both services now deploy from root directory (`/`)
-2. **Fixed Build Commands**: Using proper pnpm workspace commands
-3. **Added .railwayignore**: Excludes unnecessary files from deployment
+1. **Removed .dockerignore** - This was interfering with Railway's build system
+2. **Updated Railway Configuration** - Root level now handles the build
+3. **Simplified App Configurations** - Individual apps no longer need complex build commands
 
 ## 🚀 **Next Steps:**
 
@@ -19,51 +19,68 @@ The build was failing because:
 
 In your Railway dashboard, for both services:
 
-- **Web App Service**: Change Root Directory from `/apps/web` to `/`
-- **Worker Service**: Change Root Directory from `/apps/python-worker` to `/`
+- **Web App Service**: Change Root Directory from `/apps/web` to `/` (root)
+- **Worker Service**: Change Root Directory from `/apps/python-worker` to `/` (root)
 
-### **2. Redeploy:**
+### **2. Verify Railway Configuration:**
+
+Your root `railway.json` should now look like this:
+```json
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pnpm install && pnpm --filter web build"
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "startCommand": "cd apps/web && pnpm start"
+  }
+}
+```
+
+### **3. Commit and Push Changes:**
+
+```bash
+git add .
+git commit -m "Fix Railway configuration: use NIXPACKS instead of Docker"
+git push
+```
+
+### **4. Redeploy:**
 
 ```bash
 # From the root directory
 railway up
 ```
 
-### **3. Verify Environment Variables:**
+## 🔑 **Key Changes Made:**
 
-Make sure these are set in Railway dashboard for the web app:
+1. **Root Directory**: Both services now deploy from `/` (root) instead of individual app directories
+2. **Build System**: Using NIXPACKS instead of Docker for better monorepo support
+3. **Build Command**: `pnpm install && pnpm --filter web build` runs from root
+4. **Start Command**: `cd apps/web && pnpm start` navigates to the correct app directory
 
-```env
-DATABASE_URL=postgresql://postgres:WsuWPjzbYzmCAOBAIZcOSMCepRzoUhhK@shortline.proxy.rlwy.net:54328/railway
-REDIS_URL=redis://default:pvlvdPodENgUplUIIAMtTwvupDjNmBOe@interchange.proxy.rlwy.net:46754
-S3_ENDPOINT=http://bucket.railway.internal:9000
-S3_ACCESS_KEY=13c8aVFDLerUXdzj5QkziAZG4YR1uCJw
-S3_SECRET_KEY=cc2pcnvG5ENuJpzYL8SUGjQFYNIBK5B49WI1YPoERQEKM1i0
-S3_BUCKET_NAME=twitcher-videos
-S3_REGION=us-east-1
-NEXTAUTH_SECRET=twitcher-super-secret-key-change-in-production
-NEXTAUTH_URL=https://your-web-app-domain.railway.app
-WORKER_TOKEN=twitcher-worker-secret-token
-STREAMKEY_ENC_KEY=dHdpdGNoZXItZGVmYXVsdC1rZXktMzItYnl0ZXMtbG9uZw==
-NODE_ENV=production
-```
+## 📁 **Files Updated:**
 
-### **4. Expected Build Process:**
-
-1. Railway will clone your entire repository
-2. Run `pnpm install` to install all dependencies
-3. Run `pnpm --filter web build` to build the web app
-4. Deploy the built application
-
-## 📁 **Key Files Updated:**
-
-- `apps/web/railway.json` - Fixed build command
-- `apps/python-worker/railway.json` - Fixed build command  
-- `.railwayignore` - Added to exclude unnecessary files
-- `railway-setup.md` - Updated documentation
+- `railway.json` - Root configuration with build and start commands
+- `apps/web/railway.json` - Simplified web app configuration
+- `apps/python-worker/railway.json` - Simplified worker configuration
+- `.railwayignore` - Excludes Docker files and unnecessary files
+- **Removed**: `.dockerignore` (was interfering with Railway build)
 
 ## 🎯 **Why This Fixes the Issue:**
 
-- **Root Directory Access**: Now Railway can access `pnpm-lock.yaml` and workspace files
-- **Proper Build Commands**: Using pnpm workspace filters instead of directory navigation
-- **Clean Deployment**: `.railwayignore` ensures only necessary files are included
+- **No More Docker**: Railway now uses NIXPACKS builder which handles monorepos better
+- **Correct Build Context**: Root directory gives access to all workspace files
+- **Proper Commands**: Build runs from root, start runs from app directory
+- **Clean Environment**: No Docker files to confuse Railway's build system
+
+## 🚨 **Important Notes:**
+
+- **Root Directory**: Must be `/` (root) for both services
+- **Build Command**: Runs from root directory with pnpm workspace filters
+- **Start Command**: Navigates to the correct app directory before starting
+- **Environment Variables**: Still need to be set in Railway dashboard

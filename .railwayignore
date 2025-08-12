@@ -12,6 +12,7 @@ build/
 # Exclude Docker files (we're using Railway's build system)
 Dockerfile
 docker-compose*.yml
+.dockerignore
 
 # Exclude scripts and documentation
 *.bat
