@@ -475,10 +475,14 @@ def main():
                     print(f"📡 RTMP: rtmp://{job['ingest']}/{job['streamKey']}")
                     print(f"⚙️ Settings: fps={fps}, vb={vb}k, ab={ab}k, loop={loop}")
                     
+                    print(f"🔍 About to test S3 URL accessibility...")
+                    
                     # Test if the S3 URL is accessible
                     print(f"🔍 Testing S3 URL accessibility...")
                     try:
+                        print(f"🔍 Importing urllib.request...")
                         import urllib.request
+                        print(f"🔍 Creating test request...")
                         test_req = urllib.request.Request(job['s3Url'])
                         test_req.get_method = lambda: 'HEAD'
                         
@@ -491,8 +495,9 @@ def main():
                                 raise Exception(f"S3 URL returned status {response.status}")
                         print("✅ S3 URL is accessible")
                     except Exception as e:
-                        error_msg = f"S3 URL not accessible: {e}"
-                        print(f"❌ {error_msg}")
+                        print(f"❌ S3 URL not accessible: {e}")
+                        print(f"🔍 Exception type: {type(e).__name__}")
+                        print(f"🔍 Exception details: {str(e)}")
                         
                         # Try to provide more helpful error information
                         if "403" in str(e):
@@ -548,7 +553,6 @@ def main():
                                         if '?' in extracted_s3_key:
                                             extracted_s3_key = extracted_s3_key.split('?')[0]
                                         
-                                    if extracted_s3_key:
                                         print(f"🔑 Extracted S3 key from URL: {extracted_s3_key}")
                                         
                                         # Test S3 client access with extracted key
@@ -568,6 +572,8 @@ def main():
                         print(f"🚨 Stream {stream_id} failed due to S3 access issues")
                         callback({"streamId": stream_id, "jobId": job_id, "status": "FAILED", "endedAt": datetime.now(timezone.utc).isoformat(), "worker": WORKER_ID, "error": error_msg})
                         continue
+                    
+                    print(f"🔍 S3 URL test completed, proceeding to video processing...")
                     
                     # Assume `job["s3Url"]` is a presigned GET to the MP4
                     # If S3 client access worked, use that instead of presigned URL
