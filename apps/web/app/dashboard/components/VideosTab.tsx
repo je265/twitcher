@@ -22,6 +22,7 @@ export default function VideosTab() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [deletingVideo, setDeletingVideo] = useState<string | null>(null);
 
   useEffect(() => {
     fetchVideos();
@@ -38,6 +39,45 @@ export default function VideosTab() {
       console.error("Failed to fetch videos:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteVideo = async (videoId: string, videoTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${videoTitle}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingVideo(videoId);
+    
+    try {
+      const response = await fetch("/api/admin/cleanup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "delete-video",
+          videoId: videoId,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // Remove video from local state
+          setVideos(videos.filter(v => v.id !== videoId));
+          alert(`"${videoTitle}" has been deleted successfully.`);
+        } else {
+          alert(`Failed to delete video: ${data.message}`);
+        }
+      } else {
+        alert("Failed to delete video. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error deleting video:", error);
+      alert("Failed to delete video. Please try again.");
+    } finally {
+      setDeletingVideo(null);
     }
   };
 
@@ -284,8 +324,17 @@ export default function VideosTab() {
                         🔴 Stream This
                       </button>
                       
-                      <button className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200">
-                        ⋯
+                      <button
+                        onClick={() => handleDeleteVideo(video.id, video.title)}
+                        disabled={deletingVideo === video.id}
+                        className="bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 hover:text-red-300 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete video"
+                      >
+                        {deletingVideo === video.id ? (
+                          <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          "🗑️"
+                        )}
                       </button>
                     </div>
                   </div>
@@ -326,6 +375,10 @@ export default function VideosTab() {
             <li className="flex items-start gap-2">
               <span className="text-blue-400">•</span>
               <div>Videos can be streamed to multiple accounts simultaneously</div>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400">•</span>
+              <div>Delete videos to free up storage space when needed</div>
             </li>
           </ul>
         </div>
