@@ -72,20 +72,29 @@ export async function POST(req: NextRequest) {
 
     // Ensure bucket exists and upload original file to S3
     console.log(`📤 Uploading original video to S3: ${originalS3Key}`);
+    console.log(`🔧 S3 Config: endpoint=${process.env.S3_ENDPOINT}, bucket=${process.env.S3_BUCKET_NAME}, region=${process.env.S3_REGION}`);
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
     try {
       // Ensure bucket exists before uploading
+      console.log(`🪣 Ensuring bucket exists...`);
       await ensureBucketExists();
+      console.log(`✅ Bucket check completed`);
       
       // Upload the original file
+      console.log(`📤 Starting S3 upload...`);
       await uploadVideoToS3(originalS3Key, buffer, file.type);
       console.log(`✅ Successfully uploaded ${buffer.length} bytes to ${originalS3Key}`);
-    } catch (uploadError) {
+    } catch (uploadError: any) {
       console.error("❌ Failed to upload original video to S3:", uploadError);
+      console.error("❌ Error details:", {
+        message: uploadError.message,
+        stack: uploadError.stack,
+        name: uploadError.name
+      });
       return NextResponse.json(
-        { success: false, message: "Failed to upload video file" },
+        { success: false, message: "Failed to upload video file", error: uploadError.message },
         { status: 500 }
       );
     }
