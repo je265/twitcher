@@ -174,10 +174,11 @@ Railway Project
 ## ✅ **What Railway Will Do (Matching Your Rebuild Script):**
 
 1. **Install Dependencies**: `pnpm install` for web app, `pip install` for worker
-2. **Build Web App**: `pnpm --filter web build` (Next.js production build)
-3. **Start Services**: Automatic startup with health checks
-4. **Database Setup**: Prisma will auto-connect and sync schema
-5. **Storage Setup**: S3 bucket will be created automatically
+2. **Generate Prisma Client**: `pnpm --filter prisma generate` (creates Prisma client)
+3. **Build Web App**: `pnpm --filter web build` (Next.js production build)
+4. **Start Services**: Automatic startup with health checks
+5. **Database Setup**: Prisma will auto-connect and sync schema
+6. **Storage Setup**: S3 bucket will be created automatically
 
 ## 🚨 **Important Notes:**
 
