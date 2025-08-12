@@ -60,16 +60,111 @@ def upload_to_s3(local_path, s3_key, content_type="video/mp4"):
 def get_job():
     # Minimal polling endpoint you'd expose in Next.js to fetch the next job for this worker.
     url = urljoin(API_BASE, "/api/worker/next")
-    r = requests.get(url, headers={"Authorization": f"Bearer {API_TOKEN}"}, timeout=30)
-    if r.status_code == 204:
-        return None
-    r.raise_for_status()
-    return r.json()
+    
+    # Add retry logic for connection issues
+    max_retries = 3
+    retry_delay = 5  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"🔍 Attempting to fetch job (attempt {attempt + 1}/{max_retries})")
+            r = requests.get(url, headers={"Authorization": f"Bearer {API_TOKEN}"}, timeout=30)
+            
+            if r.status_code == 204:
+                return None
+            elif r.status_code == 503:
+                print(f"⚠️ Service temporarily unavailable (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    print(f"⏳ Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    print("❌ Max retries reached, service unavailable")
+                    return None
+            elif r.status_code == 401:
+                print("❌ Authentication failed - check WORKER_TOKEN")
+                return None
+            elif r.status_code >= 500:
+                print(f"⚠️ Server error {r.status_code} (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    print(f"⏳ Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    print("❌ Max retries reached, server error")
+                    return None
+            
+            r.raise_for_status()
+            return r.json()
+            
+        except requests.exceptions.Timeout:
+            print(f"⏰ Request timeout (attempt {attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                print(f"⏳ Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                continue
+            else:
+                print("❌ Max retries reached, timeout")
+                return None
+        except requests.exceptions.ConnectionError as e:
+            print(f"🔌 Connection error: {e} (attempt {attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                print(f"⏳ Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                continue
+            else:
+                print("❌ Max retries reached, connection failed")
+                return None
+        except Exception as e:
+            print(f"❌ Unexpected error: {e}")
+            return None
+    
+    return None
 
 def callback(payload):
-    requests.post(urljoin(API_BASE, "/api/worker/callback"),
-                  headers={"Authorization": f"Bearer {API_TOKEN}", "Content-Type": "application/json"},
-                  data=json.dumps(payload), timeout=30)
+    """Send callback to web app with retry logic"""
+    max_retries = 3
+    retry_delay = 2  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            r = requests.post(
+                urljoin(API_BASE, "/api/worker/callback"),
+                headers={"Authorization": f"Bearer {API_TOKEN}", "Content-Type": "application/json"},
+                data=json.dumps(payload), 
+                timeout=30
+            )
+            
+            if r.status_code == 200:
+                return  # Success
+            elif r.status_code >= 500:
+                print(f"⚠️ Callback server error {r.status_code} (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    print("❌ Callback failed after max retries")
+            else:
+                print(f"⚠️ Callback failed with status {r.status_code}")
+                break
+                
+        except requests.exceptions.Timeout:
+            print(f"⏰ Callback timeout (attempt {attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+                continue
+            else:
+                print("❌ Callback failed after max retries")
+        except requests.exceptions.ConnectionError as e:
+            print(f"🔌 Callback connection error: {e} (attempt {attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+                continue
+            else:
+                print("❌ Callback failed after max retries")
+        except Exception as e:
+            print(f"❌ Callback unexpected error: {e}")
+            break
 
 def process_video(input_url, output_path, max_height=720):
     """
@@ -156,6 +251,26 @@ def test_ffmpeg():
         print(f"❌ FFmpeg test error: {e}")
         return False
 
+def check_web_app_health():
+    """Check if the web app is healthy and accessible"""
+    try:
+        health_url = urljoin(API_BASE, "/api/worker/health")
+        print(f"🏥 Checking web app health: {health_url}")
+        
+        r = requests.get(health_url, headers={"Authorization": f"Bearer {API_TOKEN}"}, timeout=10)
+        
+        if r.status_code == 200:
+            health_data = r.json()
+            print(f"✅ Web app healthy: {health_data.get('status', 'unknown')}")
+            return True
+        else:
+            print(f"⚠️ Web app health check failed: {r.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Health check failed: {e}")
+        return False
+
 def main():
     print("🚀 Starting Twitcher Python Worker")
     print(f"🆔 Worker ID: {WORKER_ID}")
@@ -165,6 +280,11 @@ def main():
     if not test_ffmpeg():
         print("❌ FFmpeg not available, exiting")
         return
+    
+    # Test web app connectivity
+    print("🔍 Testing web app connectivity...")
+    if not check_web_app_health():
+        print("⚠️ Web app health check failed, but continuing...")
     
     while True:
         job = get_job()

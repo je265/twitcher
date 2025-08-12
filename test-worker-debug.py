@@ -170,6 +170,43 @@ def test_s3_access():
         print(f"❌ S3 test failed: {e}")
         return False
 
+def test_web_app_health():
+    """Test web app health and connectivity"""
+    print("🔍 Testing web app health...")
+    try:
+        api_base = os.environ.get("API_BASE")
+        worker_token = os.environ.get("WORKER_TOKEN")
+        
+        if not api_base or not worker_token:
+            print("❌ Missing API environment variables")
+            return False
+        
+        # Test basic connectivity
+        response = requests.get(api_base, timeout=10)
+        if response.status_code != 200:
+            print(f"❌ Root endpoint failed: {response.status_code}")
+            return False
+        
+        # Test worker health endpoint
+        health_url = f"{api_base.rstrip('/')}/api/worker/health"
+        response = requests.get(
+            health_url, 
+            headers={"Authorization": f"Bearer {worker_token}"}, 
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            health_data = response.json()
+            print(f"✅ Web app healthy: {health_data.get('status', 'unknown')}")
+            return True
+        else:
+            print(f"❌ Health check failed: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Web app health test failed: {e}")
+        return False
+
 def main():
     print("🚀 Twitcher Worker Debug Script")
     print("=" * 50)
@@ -178,6 +215,7 @@ def main():
         ("Environment Variables", test_environment),
         ("FFmpeg Availability", test_ffmpeg),
         ("S3 Access", test_s3_access),
+        ("Web App Health", test_web_app_health),
         ("API Connection", test_api_connection),
         ("FFmpeg Streaming", test_ffmpeg_stream),
     ]
