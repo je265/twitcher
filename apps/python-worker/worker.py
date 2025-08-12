@@ -130,9 +130,42 @@ def run_ffmpeg(input_url, ingest, stream_key, fps, vb_k, ab_k, loop):
         f"rtmp://{ingest}/{stream_key}"
     ]
 
-    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    print(f"🚀 Running FFmpeg command: {' '.join(cmd)}")
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+def test_ffmpeg():
+    """Test if FFmpeg is available and working"""
+    try:
+        result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            print("✅ FFmpeg is available")
+            # Extract version info
+            version_line = result.stdout.split('\n')[0]
+            print(f"📹 {version_line}")
+            return True
+        else:
+            print(f"❌ FFmpeg test failed with return code {result.returncode}")
+            return False
+    except FileNotFoundError:
+        print("❌ FFmpeg not found in PATH")
+        return False
+    except subprocess.TimeoutExpired:
+        print("❌ FFmpeg test timed out")
+        return False
+    except Exception as e:
+        print(f"❌ FFmpeg test error: {e}")
+        return False
 
 def main():
+    print("🚀 Starting Twitcher Python Worker")
+    print(f"🆔 Worker ID: {WORKER_ID}")
+    print(f"🌐 API Base: {API_BASE}")
+    
+    # Test FFmpeg availability
+    if not test_ffmpeg():
+        print("❌ FFmpeg not available, exiting")
+        return
+    
     while True:
         job = get_job()
         if not job:
@@ -206,67 +239,200 @@ def main():
             # Handle streaming job (existing logic)
             stream_id = job["streamId"]
             
+            # Validate required fields
+            required_fields = ["s3Url", "ingest", "streamKey", "fps", "vb", "ab", "loop"]
+            missing_fields = [field for field in required_fields if field not in job or job[field] is None]
+            
+            if missing_fields:
+                error_msg = f"Missing required fields: {missing_fields}"
+                print(f"❌ {error_msg}")
+                callback({"streamId": stream_id, "jobId": job_id, "status": "FAILED", "endedAt": datetime.now(timezone.utc).isoformat(), "worker": WORKER_ID, "error": error_msg})
+                continue
+            
+            # Validate field types
+            try:
+                fps = int(job["fps"])
+                vb = int(job["vb"])
+                ab = int(job["ab"])
+                loop = bool(job["loop"])
+            except (ValueError, TypeError) as e:
+                error_msg = f"Invalid field types: fps={job['fps']}, vb={job['vb']}, ab={job['ab']}, loop={job['loop']}"
+                print(f"❌ {error_msg}")
+                callback({"streamId": stream_id, "jobId": job_id, "status": "FAILED", "endedAt": datetime.now(timezone.utc).isoformat(), "worker": WORKER_ID, "error": error_msg})
+                continue
+            
             callback({"streamId": stream_id, "jobId": job_id, "status": "ACTIVE", "startedAt": started, "worker": WORKER_ID})
 
             print(f"🎬 Starting stream {stream_id}")
             print(f"📹 Video URL: {job['s3Url']}")
             print(f"📡 RTMP: rtmp://{job['ingest']}/{job['streamKey']}")
+            print(f"⚙️ Settings: fps={fps}, vb={vb}k, ab={ab}k, loop={loop}")
+            
+            # Test if the S3 URL is accessible
+            try:
+                import urllib.request
+                test_req = urllib.request.Request(job['s3Url'])
+                test_req.get_method = lambda: 'HEAD'
+                with urllib.request.urlopen(test_req, timeout=10) as response:
+                    if response.status != 200:
+                        raise Exception(f"S3 URL returned status {response.status}")
+                print("✅ S3 URL is accessible")
+            except Exception as e:
+                error_msg = f"S3 URL not accessible: {e}"
+                print(f"❌ {error_msg}")
+                callback({"streamId": stream_id, "jobId": job_id, "status": "FAILED", "endedAt": datetime.now(timezone.utc).isoformat(), "worker": WORKER_ID, "error": error_msg})
+                continue
             
             # Assume `job["s3Url"]` is a presigned GET to the MP4
             proc = run_ffmpeg(
                 input_url=job["s3Url"],
                 ingest=job["ingest"],
                 stream_key=job["streamKey"],
-                fps=job["fps"], vb_k=job["vb"], ab_k=job["ab"], loop=job["loop"]
+                fps=fps, vb_k=vb, ab_k=ab, loop=loop
             )
 
             # capture logs and monitor bitrate
             log_lines = []
             last_bitrate_report = time.time()
+            current_bitrate = None
+            
             try:
-                for line in proc.stdout:
-                    log_lines.append(line.rstrip())
-                    
-                    # Parse FFmpeg progress for bitrate monitoring
-                    if "bitrate=" in line:
-                        try:
-                            # Extract bitrate from FFmpeg output (format: "bitrate=1234.5kbits/s")
-                            bitrate_part = [part for part in line.split() if "bitrate=" in part][0]
-                            bitrate_value = bitrate_part.split("=")[1].replace("kbits/s", "").replace("bits/s", "")
+                # Give FFmpeg a moment to start and check for immediate errors
+                time.sleep(2)
+                
+                # Check if process is still running
+                if proc.poll() is not None:
+                    # Process died immediately
+                    stderr_output = proc.stderr.read() if proc.stderr else ""
+                    error_msg = f"FFmpeg process died immediately: {stderr_output}"
+                    print(f"❌ {error_msg}")
+                    raise Exception(error_msg)
+                
+                # Monitor both stdout and stderr
+                import select
+                import sys
+                
+                # Set non-blocking mode for stdout
+                import fcntl
+                import os
+                
+                # Use a simpler approach - just read from stdout with timeout
+                start_time = time.time()
+                bitrate_found = False
+                
+                while proc.poll() is None and (time.time() - start_time) < 30:  # Monitor for 30 seconds
+                    try:
+                        # Try to read a line with timeout
+                        line = proc.stdout.readline()
+                        if line:
+                            line = line.strip()
+                            log_lines.append(line)
+                            print(f"FFmpeg: {line}")
                             
-                            if bitrate_value != "N/A":
-                                current_bitrate = float(bitrate_value)
-                                
-                                # Report bitrate every 10 seconds
-                                if time.time() - last_bitrate_report >= 10:
-                                    callback({
-                                        "streamId": stream_id, 
-                                        "jobId": job_id, 
-                                        "status": "PROGRESS",
-                                        "bitrate": current_bitrate,
-                                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                                        "worker": WORKER_ID
-                                    })
-                                    last_bitrate_report = time.time()
-                        except (IndexError, ValueError):
-                            pass  # Skip malformed bitrate lines
+                            # Parse FFmpeg progress for bitrate monitoring
+                            if "bitrate=" in line:
+                                try:
+                                    # Extract bitrate from FFmpeg output (format: "bitrate=1234.5kbits/s")
+                                    parts = line.split()
+                                    for part in parts:
+                                        if "bitrate=" in part:
+                                            bitrate_part = part
+                                            break
+                                    else:
+                                        continue
+                                        
+                                    bitrate_value = bitrate_part.split("=")[1].replace("kbits/s", "").replace("bits/s", "")
+                                    
+                                    if bitrate_value != "N/A" and bitrate_value.replace(".", "").isdigit():
+                                        current_bitrate = float(bitrate_value)
+                                        bitrate_found = True
+                                        print(f"📊 Bitrate detected: {current_bitrate} kbps")
+                                        
+                                        # Report bitrate every 10 seconds
+                                        if time.time() - last_bitrate_report >= 10:
+                                            callback({
+                                                "streamId": stream_id, 
+                                                "jobId": job_id, 
+                                                "status": "PROGRESS",
+                                                "bitrate": current_bitrate,
+                                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                                                "worker": WORKER_ID
+                                            })
+                                            last_bitrate_report = time.time()
+                                        break
+                                except (IndexError, ValueError, AttributeError) as e:
+                                    print(f"⚠️ Bitrate parsing error: {e} for line: {line}")
+                                    pass  # Skip malformed bitrate lines
+                        else:
+                            # No output, check if process is still alive
+                            time.sleep(0.1)
                             
-            except Exception:
-                pass
+                    except Exception as e:
+                        print(f"⚠️ Error reading FFmpeg output: {e}")
+                        time.sleep(0.1)
+                
+                # If we didn't find bitrate in the first 30 seconds, report a default
+                if not bitrate_found and current_bitrate is None:
+                    current_bitrate = job["vb"]  # Use configured video bitrate as fallback
+                    print(f"📊 Using fallback bitrate: {current_bitrate} kbps")
+                    callback({
+                        "streamId": stream_id, 
+                        "jobId": job_id, 
+                        "status": "PROGRESS",
+                        "bitrate": current_bitrate,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "worker": WORKER_ID
+                    })
+                            
+            except Exception as e:
+                print(f"❌ Error monitoring FFmpeg: {e}")
+                # Don't break here, let the process continue
 
-            rc = proc.wait()
+            # Wait for process to complete
+            try:
+                rc = proc.wait(timeout=300)  # 5 minute timeout
+            except subprocess.TimeoutExpired:
+                print("⏰ FFmpeg process timed out, terminating...")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                rc = -1
+            
             ended = datetime.now(timezone.utc).isoformat()
 
             status = "COMPLETED" if rc == 0 else "FAILED"
             print(f"⏹️ Stream {stream_id} ended with code {rc} - Status: {status}")
             
-            if rc != 0 and log_lines:
+            if rc != 0:
+                # Read any remaining stderr output
+                stderr_output = ""
+                if proc.stderr:
+                    stderr_output = proc.stderr.read()
+                
                 print("🚨 FFmpeg errors:")
-                for line in log_lines[-10:]:  # Show last 10 lines
-                    print(f"   {line}")
+                if stderr_output:
+                    for line in stderr_output.split('\n')[-10:]:  # Show last 10 lines
+                        if line.strip():
+                            print(f"   {line}")
+                if log_lines:
+                    for line in log_lines[-10:]:  # Show last 10 lines
+                        print(f"   {line}")
             
-            # TODO: upload logs to S3 and pass logS3Key
-            callback({"streamId": stream_id, "jobId": job_id, "status": status, "endedAt": ended, "worker": WORKER_ID})
+            # Send final callback with bitrate if we have it
+            callback_data = {
+                "streamId": stream_id, 
+                "jobId": job_id, 
+                "status": status, 
+                "endedAt": ended, 
+                "worker": WORKER_ID
+            }
+            
+            if current_bitrate is not None:
+                callback_data["bitrate"] = current_bitrate
+            
+            callback(callback_data)
 
 if __name__ == "__main__":
     main()

@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Handle streaming callbacks (existing logic)
-    console.log(`📡 Worker callback for stream ${streamId}:`, { status, worker, bitrate });
+    console.log(`📡 Worker callback for stream ${streamId}:`, { status, worker, bitrate, timestamp });
 
     // Update stream status
     if (status === "ACTIVE") {
@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
       });
     } else if (status === "PROGRESS" && bitrate && timestamp) {
       // Store bitrate metrics for performance monitoring
+      console.log(`📊 Storing bitrate metric: ${bitrate} kbps for stream ${streamId}`);
       await prisma.streamMetrics.create({
         data: {
           streamId: streamId,
@@ -73,6 +74,9 @@ export async function POST(req: NextRequest) {
         },
       });
     } else if (status === "COMPLETED" || status === "FAILED") {
+      const finalBitrate = bitrate || null;
+      console.log(`🏁 Stream ${streamId} ${status.toLowerCase()}, final bitrate: ${finalBitrate} kbps`);
+      
       await prisma.stream.update({
         where: { id: streamId },
         data: {
@@ -80,6 +84,18 @@ export async function POST(req: NextRequest) {
           endedAt: endedAt ? new Date(endedAt) : new Date(),
         },
       });
+      
+      // If we have a final bitrate, store it as a metric
+      if (finalBitrate) {
+        await prisma.streamMetrics.create({
+          data: {
+            streamId: streamId,
+            bitrate: finalBitrate,
+            timestamp: new Date(endedAt || new Date()),
+            worker: worker,
+          },
+        });
+      }
     }
 
     // Update job status (but not for PROGRESS updates - those are just metrics)

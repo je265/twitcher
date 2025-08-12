@@ -48,6 +48,16 @@ export async function GET(req: NextRequest) {
     
     if (job) {
       console.log("📹 Found video processing job:", job.id);
+      
+      // Remove the job from the queue to prevent duplicate processing
+      try {
+        await job.remove();
+        console.log("✅ Removed video processing job from queue");
+      } catch (removeError) {
+        console.warn("⚠️ Failed to remove video processing job from queue:", removeError);
+        // Continue anyway, the job will be processed
+      }
+      
       // Return video processing job data
       return NextResponse.json({
         type: "video_process",
@@ -70,6 +80,16 @@ export async function GET(req: NextRequest) {
     }
 
     console.log("🎥 Found streaming job:", job.id);
+    
+    // Remove the job from the queue to prevent duplicate processing
+    try {
+      await job.remove();
+      console.log("✅ Removed streaming job from queue");
+    } catch (removeError) {
+      console.warn("⚠️ Failed to remove streaming job from queue:", removeError);
+      // Continue anyway, the job will be processed
+    }
+    
     // Return streaming job data
     return NextResponse.json({
       type: "stream",
