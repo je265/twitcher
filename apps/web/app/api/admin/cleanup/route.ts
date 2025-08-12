@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verify } from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { s3Client } from "@/lib/storage";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || "fallback-secret";
 
@@ -50,10 +51,10 @@ export async function POST(req: NextRequest) {
 
       // Delete from S3
       try {
-        await s3Client.deleteObject({
+        await s3Client.send(new DeleteObjectCommand({
           Bucket: process.env.S3_BUCKET_NAME || "twitcher-videos",
           Key: video.s3Key
-        });
+        }));
         console.log(`🗑️ Deleted video from S3: ${video.s3Key}`);
       } catch (s3Error) {
         console.error(`❌ Failed to delete from S3: ${video.s3Key}`, s3Error);
@@ -92,10 +93,10 @@ export async function POST(req: NextRequest) {
       for (const video of oldVideos) {
         try {
           // Delete from S3
-          await s3Client.deleteObject({
+          await s3Client.send(new DeleteObjectCommand({
             Bucket: process.env.S3_BUCKET_NAME || "twitcher-videos",
             Key: video.s3Key
-          });
+          }));
           
           // Delete from database
           await prisma.video.delete({
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest) {
           
           deletedCount++;
           console.log(`🗑️ Deleted old video: ${video.title} (${video.s3Key})`);
-        } catch (error) {
+        } catch (error: any) {
           errors.push({
             videoId: video.id,
             title: video.title,
