@@ -45,6 +45,18 @@ export async function POST(req: NextRequest) {
             select: {
               streams: true
             }
+          },
+          streams: {
+            where: {
+              status: {
+                in: ["DRAFT", "QUEUED", "RUNNING"]
+              }
+            },
+            select: {
+              id: true,
+              status: true,
+              title: true
+            }
           }
         }
       });
@@ -56,13 +68,28 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Check if video is being used by streams
-      if (video._count.streams > 0) {
+      // Check if video is being used by ACTIVE streams only
+      const activeStreams = video.streams.filter((s: any) => 
+        ["DRAFT", "QUEUED", "RUNNING"].includes(s.status)
+      );
+      
+      if (activeStreams.length > 0) {
+        const statusCounts = activeStreams.reduce((acc: Record<string, number>, stream: any) => {
+          acc[stream.status] = (acc[stream.status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        const statusText = Object.entries(statusCounts)
+          .map(([status, count]) => `${count} ${status.toLowerCase()}`)
+          .join(", ");
+        
         return NextResponse.json({
           success: false,
-          message: `Cannot delete video "${video.title}" because it's being used by ${video._count.streams} stream(s). Please delete the streams first.`,
+          message: `Cannot delete video "${video.title}" because it has ${activeStreams.length} active stream(s): ${statusText}. Please delete or complete these streams first.`,
           videoInUse: true,
-          streamCount: video._count.streams
+          activeStreamCount: activeStreams.length,
+          totalStreamCount: video._count.streams,
+          activeStreams: activeStreams
         }, { status: 400 });
       }
 
@@ -104,6 +131,17 @@ export async function POST(req: NextRequest) {
             select: {
               streams: true
             }
+          },
+          streams: {
+            where: {
+              status: {
+                in: ["DRAFT", "QUEUED", "RUNNING"]
+              }
+            },
+            select: {
+              id: true,
+              status: true
+            }
           }
         },
         orderBy: {
@@ -117,10 +155,14 @@ export async function POST(req: NextRequest) {
 
       for (const video of oldVideos) {
         try {
-          // Skip videos that are being used by streams
-          if (video._count.streams > 0) {
+          // Skip videos that have active streams
+          const activeStreams = video.streams.filter((s: any) => 
+            ["DRAFT", "QUEUED", "RUNNING"].includes(s.status)
+          );
+          
+          if (activeStreams.length > 0) {
             skippedCount++;
-            console.log(`⏭️ Skipped video "${video.title}" - used by ${video._count.streams} stream(s)`);
+            console.log(`⏭️ Skipped video "${video.title}" - has ${activeStreams.length} active stream(s) out of ${video._count.streams} total`);
             continue;
           }
 
@@ -148,30 +190,48 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `Cleanup completed. Deleted ${deletedCount} videos, skipped ${skippedCount} videos in use.`,
+        message: `Cleanup completed. Deleted ${deletedCount} videos, skipped ${skippedCount} videos with active streams.`,
         deletedCount,
         skippedCount,
         errors
       });
 
     } else if (action === "list-videos") {
-      // List all videos with their sizes
+      // List all videos with their stream counts
       const videos = await prisma.video.findMany({
         orderBy: {
           createdAt: 'desc'
         },
-        select: {
-          id: true,
-          title: true,
-          s3Key: true,
-          createdAt: true,
-          processingStatus: true
+        include: {
+          _count: {
+            select: {
+              streams: true
+            }
+          },
+          streams: {
+            where: {
+              status: {
+                in: ["DRAFT", "QUEUED", "RUNNING"]
+              }
+            },
+            select: {
+              id: true,
+              status: true
+            }
+          }
         }
       });
 
+      // Add computed fields for better display
+      const videosWithActiveCounts = videos.map((video: any) => ({
+        ...video,
+        activeStreamCount: video.streams.length,
+        canDelete: video.streams.length === 0
+      }));
+
       return NextResponse.json({
         success: true,
-        videos,
+        videos: videosWithActiveCounts,
         totalCount: videos.length
       });
 

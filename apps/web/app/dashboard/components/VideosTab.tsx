@@ -15,6 +15,8 @@ interface Video {
   _count: {
     streams: number;
   };
+  activeStreamCount?: number;
+  canDelete?: boolean;
 }
 
 export default function VideosTab() {
@@ -312,7 +314,11 @@ export default function VideosTab() {
                       </div>
                       
                       <div className="flex justify-between">
-                        <span>Used in streams:</span>
+                        <span>Active streams:</span>
+                        <span>{video.activeStreamCount || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total streams:</span>
                         <span>{video._count.streams}</span>
                       </div>
                     </div>
@@ -327,15 +333,15 @@ export default function VideosTab() {
                       
                       <button
                         onClick={() => handleDeleteVideo(video.id, video.title)}
-                        disabled={deletingVideo === video.id || video._count.streams > 0}
+                        disabled={deletingVideo === video.id || (video.activeStreamCount || 0) > 0}
                         className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          video._count.streams > 0
+                          (video.activeStreamCount || 0) > 0
                             ? 'bg-gray-500/20 border border-gray-500/30 text-gray-400 cursor-not-allowed'
                             : 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 hover:text-red-300'
                         } disabled:opacity-50`}
                         title={
-                          video._count.streams > 0
-                            ? `Cannot delete - used by ${video._count.streams} stream(s)`
+                          (video.activeStreamCount || 0) > 0
+                            ? `Cannot delete - used by ${video.activeStreamCount} active stream(s)`
                             : "Delete video"
                         }
                       >
@@ -348,10 +354,19 @@ export default function VideosTab() {
                     </div>
                     
                     {/* Show warning if video is in use */}
-                    {video._count.streams > 0 && (
+                    {(video.activeStreamCount || 0) > 0 && (
                       <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
                         <p className="text-xs text-yellow-400">
-                          ⚠️ This video is being used by {video._count.streams} stream(s) and cannot be deleted
+                          ⚠️ This video has {video.activeStreamCount} active stream(s) and cannot be deleted
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Show info if video has completed streams */}
+                    {(video._count.streams > 0 && (video.activeStreamCount || 0) === 0) && (
+                      <div className="mt-3 p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <p className="text-xs text-blue-400">
+                          ℹ️ This video has {video._count.streams} completed stream(s) and can be safely deleted
                         </p>
                       </div>
                     )}
