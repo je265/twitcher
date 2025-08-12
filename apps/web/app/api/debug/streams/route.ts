@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { streamQueue } from "@/lib/queue";
+import { streamQueue, connection } from "@/lib/queue";
 import { verify } from "jsonwebtoken";
 import { cookies } from "next/headers";
 
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
     // Check Redis connection
     let redisStatus = "unknown";
     try {
-      await streamQueue.client.ping();
+      await connection.ping();
       redisStatus = "connected";
     } catch (error) {
       redisStatus = "disconnected";

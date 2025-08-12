@@ -1,7 +1,7 @@
 import { Queue, Job } from "bullmq";
 import IORedis from "ioredis";
 
-const connection = new IORedis(process.env.REDIS_URL!);
+export const connection = new IORedis(process.env.REDIS_URL!);
 
 class StreamQueue extends Queue {
   constructor(name: string, opts: any) {
