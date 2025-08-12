@@ -39,7 +39,14 @@ export async function POST(req: NextRequest) {
     if (action === "delete-video" && videoId) {
       // Delete a specific video
       const video = await prisma.video.findUnique({
-        where: { id: videoId }
+        where: { id: videoId },
+        include: {
+          _count: {
+            select: {
+              streams: true
+            }
+          }
+        }
       });
 
       if (!video) {
@@ -47,6 +54,16 @@ export async function POST(req: NextRequest) {
           { success: false, message: "Video not found" },
           { status: 404 }
         );
+      }
+
+      // Check if video is being used by streams
+      if (video._count.streams > 0) {
+        return NextResponse.json({
+          success: false,
+          message: `Cannot delete video "${video.title}" because it's being used by ${video._count.streams} stream(s). Please delete the streams first.`,
+          videoInUse: true,
+          streamCount: video._count.streams
+        }, { status: 400 });
       }
 
       // Delete from S3
@@ -82,6 +99,13 @@ export async function POST(req: NextRequest) {
             lt: cutoffDate
           }
         },
+        include: {
+          _count: {
+            select: {
+              streams: true
+            }
+          }
+        },
         orderBy: {
           createdAt: 'asc'
         }
@@ -89,9 +113,17 @@ export async function POST(req: NextRequest) {
 
       let deletedCount = 0;
       let errors = [];
+      let skippedCount = 0;
 
       for (const video of oldVideos) {
         try {
+          // Skip videos that are being used by streams
+          if (video._count.streams > 0) {
+            skippedCount++;
+            console.log(`⏭️ Skipped video "${video.title}" - used by ${video._count.streams} stream(s)`);
+            continue;
+          }
+
           // Delete from S3
           await s3Client.send(new DeleteObjectCommand({
             Bucket: process.env.S3_BUCKET_NAME || "twitcher-videos",
@@ -116,8 +148,9 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `Cleanup completed. Deleted ${deletedCount} videos.`,
+        message: `Cleanup completed. Deleted ${deletedCount} videos, skipped ${skippedCount} videos in use.`,
         deletedCount,
+        skippedCount,
         errors
       });
 

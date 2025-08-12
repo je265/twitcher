@@ -61,17 +61,18 @@ export default function VideosTab() {
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // Remove video from local state
-          setVideos(videos.filter(v => v.id !== videoId));
-          alert(`"${videoTitle}" has been deleted successfully.`);
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Remove video from local state
+        setVideos(videos.filter(v => v.id !== videoId));
+        alert(`"${videoTitle}" has been deleted successfully.`);
+      } else {
+        if (data.videoInUse) {
+          alert(`Cannot delete "${videoTitle}" because it's being used by ${data.streamCount} stream(s). Please delete the streams first.`);
         } else {
           alert(`Failed to delete video: ${data.message}`);
         }
-      } else {
-        alert("Failed to delete video. Please try again.");
       }
     } catch (error) {
       console.error("Error deleting video:", error);
@@ -326,9 +327,17 @@ export default function VideosTab() {
                       
                       <button
                         onClick={() => handleDeleteVideo(video.id, video.title)}
-                        disabled={deletingVideo === video.id}
-                        className="bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 hover:text-red-300 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Delete video"
+                        disabled={deletingVideo === video.id || video._count.streams > 0}
+                        className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          video._count.streams > 0
+                            ? 'bg-gray-500/20 border border-gray-500/30 text-gray-400 cursor-not-allowed'
+                            : 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 hover:text-red-300'
+                        } disabled:opacity-50`}
+                        title={
+                          video._count.streams > 0
+                            ? `Cannot delete - used by ${video._count.streams} stream(s)`
+                            : "Delete video"
+                        }
                       >
                         {deletingVideo === video.id ? (
                           <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
@@ -337,6 +346,15 @@ export default function VideosTab() {
                         )}
                       </button>
                     </div>
+                    
+                    {/* Show warning if video is in use */}
+                    {video._count.streams > 0 && (
+                      <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                        <p className="text-xs text-yellow-400">
+                          ⚠️ This video is being used by {video._count.streams} stream(s) and cannot be deleted
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
